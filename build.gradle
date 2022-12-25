@@ -50,7 +50,10 @@ dependencies {
 
     implementation 'org.slf4j:slf4j-nop:1.7.36'
     implementation 'io.swagger:swagger-jersey2-jaxrs:1.6.8'
-    implementation 'com.trevorism:secure-utils:4.0.0'
+
+    implementation 'com.trevorism:secure-http-utils:1.0.0'
+    implementation 'com.trevorism:schedule-client:0.7.0'
+    implementation 'com.trevorism:datastore-client:2.7.0'
 
     acceptanceImplementation 'io.cucumber:cucumber-groovy:4.7.1'
     testImplementation 'junit:junit:4.13.2'
