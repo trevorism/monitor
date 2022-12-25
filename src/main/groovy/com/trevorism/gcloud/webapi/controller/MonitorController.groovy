@@ -82,7 +82,7 @@ class MonitorController {
     @Produces(MediaType.APPLICATION_JSON)
     Monitor invokeMonitor(@PathParam("source") String source) {
         TestSuite testSuite = findTestSuite(source)
-        httpClient.post("https://testing.trevorism.com/api/${testSuite.id}", "{}")
+        httpClient.post("https://testing.trevorism.com/api/suite/${testSuite.id}", "{}")
         getMonitor(source)
     }
 
@@ -105,7 +105,7 @@ class MonitorController {
         s[s.lastIndexOf("_")+1..-1]
     }
 
-    private Monitor monitorFromScheduledTask(ScheduledTask it) {
+    private static Monitor monitorFromScheduledTask(ScheduledTask it) {
         if(!it){
             return new Monitor(startDate: null)
         }
@@ -121,7 +121,7 @@ class MonitorController {
         filter.addSimpleFilter(new SimpleFilter("kind", FilterConstants.OPERATOR_EQUAL, "cucumber"))
         List<TestSuite> list =  testSuiteRepository.filter(filter)
         if(!list)
-            throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${monitor.source}")
+            throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${source}")
         return list[0]
     }
 
