@@ -1,0 +1,19 @@
+name: Test application
+
+on:
+  workflow_dispatch:
+    inputs:
+      TEST_TYPE:
+        required: false
+        type: string
+        default: acceptance
+        description: Either 'unit' or 'acceptance'
+
+jobs:
+  call-build:
+    if: ${{inputs.TEST_TYPE == 'unit'}}
+    uses: trevorism/actions-workflows/.github/workflows/build.yml@master
+
+  call-accept:
+    if: ${{inputs.TEST_TYPE == 'acceptance'}}
+    uses: trevorism/actions-workflows/.github/workflows/accept.yml@master

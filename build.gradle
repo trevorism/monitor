@@ -1,0 +1,70 @@
+buildscript {
+    ext {
+        creds = {
+            username = findProperty("github.user") ?: System.getenv("GITHUB_ACTOR")
+            password = findProperty("github.token") ?: System.getenv("GITHUB_TOKEN")
+        }
+    }
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+        maven {
+            url uri("https://maven.pkg.github.com/trevorism/gradle-acceptance-plugin")
+            credentials creds
+        }
+    }
+    dependencies {
+        classpath 'com.google.cloud.tools:appengine-gradle-plugin:2.4.5'
+        classpath 'com.trevorism:gradle-acceptance-plugin:2.2.0'
+    }
+}
+
+plugins {
+    id "groovy"
+    id "war"
+    id "jacoco"
+}
+
+apply plugin: 'com.google.cloud.tools.appengine'
+apply plugin: "com.trevorism.gradle.acceptance"
+
+repositories {
+    mavenCentral()
+    maven {
+        url uri("https://maven.pkg.github.com/trevorism/secure-http-utils")
+        credentials creds
+    }
+}
+
+def jerseyVersion = "2.38"
+
+dependencies {
+    implementation 'org.codehaus.groovy:groovy-all:2.5.19'
+
+    implementation "org.glassfish.jersey.containers:jersey-container-servlet:$jerseyVersion"
+    implementation "org.glassfish.jersey.media:jersey-media-json-jackson:$jerseyVersion"
+    implementation "org.glassfish.jersey.inject:jersey-hk2:$jerseyVersion"
+    implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.14.0'
+
+    implementation 'org.slf4j:slf4j-nop:1.7.36'
+    implementation 'io.swagger:swagger-jersey2-jaxrs:1.6.8'
+    implementation 'com.trevorism:secure-utils:4.0.0'
+
+    acceptanceImplementation 'io.cucumber:cucumber-groovy:4.7.1'
+    testImplementation 'junit:junit:4.13.2'
+}
+
+appengine {
+    deploy {
+        projectId = "trevorism-testing"
+        stopPreviousVersion = true
+        promote = true
+        version = "0-0-1"
+    }
+}
+
+check {
+    dependsOn('jacocoTestReport')
+}
