@@ -5,18 +5,23 @@ on:
     branches: [ master ]
   workflow_dispatch:
 
+permissions: write-all
+
 jobs:
   call-build:
     uses: trevorism/actions-workflows/.github/workflows/build.yml@master
+    with:
+      JDK_VERSION: 17
 
   call-deploy:
     uses: trevorism/actions-workflows/.github/workflows/deploy.yml@master
     if: success() || failure()
     needs: [call-build, call-accept-before]
     with:
+      JDK_VERSION: 17
       gcp_project: 'trevorism-testing'
       gcp_project_id: '729203316942'
-      version: '0-1-0'
+      version: '0-3-0'
     secrets:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
@@ -24,7 +29,11 @@ jobs:
 
   call-accept-before:
     uses: trevorism/actions-workflows/.github/workflows/accept.yml@master
+    with:
+      JDK_VERSION: 17
 
   call-accept-after:
     uses: trevorism/actions-workflows/.github/workflows/accept.yml@master
     needs: call-deploy
+    with:
+      JDK_VERSION: 17

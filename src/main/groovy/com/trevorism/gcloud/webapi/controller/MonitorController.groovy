@@ -19,32 +19,33 @@ import com.trevorism.schedule.model.HttpMethod
 import com.trevorism.schedule.model.ScheduledTask
 import com.trevorism.secure.Roles
 import com.trevorism.secure.Secure
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
 
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
+import io.micronaut.http.HttpResponse
+import io.micronaut.http.MediaType
+import io.micronaut.http.annotation.Body
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Delete
+import io.micronaut.http.annotation.Get
+import io.micronaut.http.annotation.Post
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-@Api("Monitor Operations")
-@Path("monitor")
+
+@Controller("monitor")
 class MonitorController {
 
     private SecureHttpClient httpClient = new DefaultSecureHttpClient()
     private Repository<TestSuite> testSuiteRepository = new PingingDatastoreRepository<>(TestSuite, httpClient)
     private ScheduleService scheduleService = new DefaultScheduleService()
 
-    @ApiOperation(value = "Creates a new monitor **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Creates a new monitor **Secure")
     @Secure(Roles.USER)
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    Monitor createMonitor(Monitor monitor) {
+    @Post(value = "/", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor createMonitor(@Body Monitor monitor) {
         TestSuite testSuite = findTestSuite(monitor.source)
         ScheduledTask scheduledTask = createScheduledTask(testSuite, monitor)
         scheduleService.create(scheduledTask)
@@ -54,10 +55,10 @@ class MonitorController {
         return monitor
     }
 
-    @ApiOperation(value = "Lists all monitors **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Lists all monitors **Secure")
     @Secure(Roles.USER)
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Get(value = "/", consumes = MediaType.APPLICATION_JSON)
     List<Monitor> listAllMonitor() {
         scheduleService.list().findAll{
             it.name.startsWith("monitor_")
@@ -66,32 +67,29 @@ class MonitorController {
         }
     }
 
-    @ApiOperation(value = "Gets monitors based on the service name **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Gets monitors based on the service name **Secure")
     @Secure(Roles.USER)
-    @GET
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor getMonitor(@PathParam("source") String source) {
+    @Get(value = "/{source}", consumes = MediaType.APPLICATION_JSON)
+    Monitor getMonitor(String source) {
         monitorFromScheduledTask(scheduleService.list().find{ it.name.startsWith("monitor_${source}_")})
     }
 
-    @ApiOperation(value = "Invoke the monitor **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Invoke the monitor **Secure")
     @Secure(value = Roles.USER, allowInternal = true)
-    @POST
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor invokeMonitor(@PathParam("source") String source) {
+    @Post(value = "/{source}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor invokeMonitor(String source) {
         TestSuite testSuite = findTestSuite(source)
         httpClient.post("https://testing.trevorism.com/api/suite/${testSuite.id}", "{}")
         getMonitor(source)
     }
 
-    @ApiOperation(value = "Remove registered monitor **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Remove registered monitor **Secure")
     @Secure(Roles.USER)
-    @DELETE
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor removeMonitor(@PathParam("source") String source) {
+    @Delete(value = "/{source}", consumes = MediaType.APPLICATION_JSON)
+    Monitor removeMonitor(String source) {
         Monitor monitor = getMonitor(source)
         scheduleService.delete("monitor_${source}_${monitor.frequency}")
         return monitor

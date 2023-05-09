@@ -7,7 +7,9 @@ import com.trevorism.gcloud.webapi.model.TestSuite
 import com.trevorism.https.SecureHttpClient
 import com.trevorism.schedule.ScheduleService
 import com.trevorism.schedule.model.ScheduledTask
-import org.junit.Test
+import org.junit.jupiter.api.Test
+
+import static org.junit.jupiter.api.Assertions.assertThrows
 
 class MonitorControllerTest  {
 
@@ -42,12 +44,12 @@ class MonitorControllerTest  {
         assert monitor.startDate
     }
 
-    @Test(expected = MonitorNotFoundException)
+    @Test
     void testCreateMonitorInvalid() {
         MonitorController mc = new MonitorController()
         mc.testSuiteRepository = ["filter": { x -> []}] as Repository
         mc.scheduleService = [create: { x-> new ScheduledTask()} ] as ScheduleService
-        mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST))
+        assertThrows(MonitorNotFoundException, () -> mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST)))
     }
 
     @Test

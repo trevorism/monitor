@@ -17,18 +17,20 @@ buildscript {
     }
     dependencies {
         classpath 'com.google.cloud.tools:appengine-gradle-plugin:2.4.5'
-        classpath 'com.trevorism:gradle-acceptance-plugin:2.2.0'
+        classpath 'com.trevorism:gradle-acceptance-plugin:2.3.1'
     }
 }
 
 plugins {
-    id "groovy"
-    id "war"
-    id "jacoco"
+    id("groovy")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("io.micronaut.application") version "3.7.8"
 }
 
 apply plugin: 'com.google.cloud.tools.appengine'
 apply plugin: "com.trevorism.gradle.acceptance"
+
+group = "com.trevorism"
 
 repositories {
     mavenCentral()
@@ -38,36 +40,56 @@ repositories {
     }
 }
 
-def jerseyVersion = "2.38"
-
 dependencies {
-    implementation 'org.codehaus.groovy:groovy-all:2.5.19'
+    implementation("io.micronaut.groovy:micronaut-runtime-groovy")
+    implementation("io.micronaut:micronaut-jackson-databind")
+    implementation("io.micronaut.security:micronaut-security")
+    implementation("io.micronaut:micronaut-validation")
 
-    implementation "org.glassfish.jersey.containers:jersey-container-servlet:$jerseyVersion"
-    implementation "org.glassfish.jersey.media:jersey-media-json-jackson:$jerseyVersion"
-    implementation "org.glassfish.jersey.inject:jersey-hk2:$jerseyVersion"
-    implementation 'com.fasterxml.jackson.jaxrs:jackson-jaxrs-json-provider:2.14.0'
+    implementation("jakarta.annotation:jakarta.annotation-api")
+    implementation 'io.projectreactor:reactor-core:3.5.5'
 
-    implementation 'org.slf4j:slf4j-nop:1.7.36'
-    implementation 'io.swagger:swagger-jersey2-jaxrs:1.6.8'
+    implementation("io.swagger.core.v3:swagger-annotations")
+    compileOnly("io.micronaut.openapi:micronaut-openapi"){
+        exclude module:"slf4j-nop"
+    }
+    implementation 'com.trevorism:micronaut-security-utils:0.5.0'
+    implementation 'com.trevorism:secure-http-utils:2.1.0'
+    implementation 'com.trevorism:schedule-client:0.8.0'
+    implementation 'com.trevorism:datastore-client:2.8.0'
 
-    implementation 'com.trevorism:secure-http-utils:1.0.0'
-    implementation 'com.trevorism:schedule-client:0.7.0'
-    implementation 'com.trevorism:datastore-client:2.7.0'
+    runtimeOnly("ch.qos.logback:logback-classic")
+    implementation 'org.slf4j:slf4j-simple:2.0.6'
 
-    acceptanceImplementation 'io.cucumber:cucumber-groovy:4.7.1'
-    testImplementation 'junit:junit:4.13.2'
+    acceptanceImplementation 'io.cucumber:cucumber-groovy:6.10.4'
 }
 
-appengine {
-    deploy {
-        projectId = "trevorism-testing"
-        stopPreviousVersion = true
-        promote = true
-        version = "0-1-0"
+application {
+    mainClass.set("com.trevorism.Application")
+}
+
+graalvmNative.toolchainDetection = false
+micronaut {
+    runtime("netty")
+    testRuntime("junit5")
+    processing {
+        incremental(true)
+        annotations("com.trevorism.*")
     }
 }
 
-check {
-    dependsOn('jacocoTestReport')
+tasks.withType(GroovyCompile) {
+    groovyOptions.forkOptions.jvmArgs.add('-Dgroovy.parameters=true')
+    groovyOptions.forkOptions.jvmArgs.add('-Dmicronaut.openapi.views.spec=rapidoc.enabled=false,swagger-ui.enabled=true,swagger-ui.theme=flattop')
+}
+
+appengine {
+    stage.artifact = "${buildDir}/libs/${project.name}-all.jar"
+    deploy {
+        projectId = "trevorism-testing"
+        version = "0-1-0"
+        stopPreviousVersion = true
+        promote = true
+
+    }
 }

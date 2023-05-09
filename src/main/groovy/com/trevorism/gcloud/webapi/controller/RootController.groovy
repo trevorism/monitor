@@ -1,47 +1,40 @@
 package com.trevorism.gcloud.webapi.controller
 
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
-import io.swagger.annotations.Contact
-import io.swagger.annotations.Info
-import io.swagger.annotations.SwaggerDefinition
+import io.micronaut.http.HttpResponse
+import io.micronaut.http.MediaType
+import io.micronaut.http.annotation.Controller
+import io.micronaut.http.annotation.Get
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.responses.ApiResponse
+import io.swagger.v3.oas.annotations.tags.Tag
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
-import javax.ws.rs.GET
-import javax.ws.rs.Path
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
-import javax.ws.rs.core.Response
-
-@Api("Root Operations")
-@SwaggerDefinition(
-        info = @Info(
-                description = "API",
-                version = "1",
-                title = "API",
-                contact = @Contact(name = "Trevor Brooks", url = "https://www.trevorism.com")
-        )
-)
-@Path("/")
+@Controller("/")
 class RootController {
 
-    @ApiOperation(value = "Returns 'pong' if the application is alive")
-    @GET
-    @Path("ping")
-    @Produces(MediaType.APPLICATION_JSON)
+    private static final Logger log = LoggerFactory.getLogger(RootController)
+
+    @Tag(name = "Root Operations")
+    @Operation(summary = "Returns 'pong' if the application is alive")
+    @Get(value = "/ping", produces = MediaType.TEXT_PLAIN)
     String ping() {
         "pong"
     }
 
-    @ApiOperation(value = "Context root of the application")
-    @GET
-    String displayHelpLink(){
-        '<h1>API</h1><br/>Visit the help page at <a href="/help">/help'
+    @Tag(name = "Root Operations")
+    @Get(produces = MediaType.TEXT_HTML)
+    @Operation(summary = "Context Root")
+    HttpResponse<List<String>> index() {
+        log.info("Hit context root")
+        HttpResponse.ok(['<a href="/ping">/ping</a>', '<a href="/help">/help</a>'])
     }
 
-    @ApiOperation(value = "Shows this help page")
-    @GET
-    @Path("help")
-    Response help(){
-        Response.temporaryRedirect(new URI("/swagger/index.html")).build()
+    @Tag(name = "Root Operations")
+    @Operation(summary = "This help page")
+    @ApiResponse(responseCode = "302")
+    @Get(value = "/help")
+    HttpResponse<String> help() {
+        return HttpResponse.redirect(new URI("../swagger-ui/index.html"))
     }
 }

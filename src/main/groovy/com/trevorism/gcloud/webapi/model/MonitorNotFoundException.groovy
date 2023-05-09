@@ -1,9 +1,7 @@
 package com.trevorism.gcloud.webapi.model
 
-import javax.ws.rs.WebApplicationException
-
-class MonitorNotFoundException extends WebApplicationException{
+class MonitorNotFoundException extends RuntimeException{
     MonitorNotFoundException(String message){
-        super(message, 400)
+        super(message)
     }
 }
