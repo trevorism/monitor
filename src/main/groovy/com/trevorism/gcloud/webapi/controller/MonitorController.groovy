@@ -75,7 +75,7 @@ class MonitorController {
     @Operation(summary = "Invoke the monitor **Secure")
     @Secure(value = Roles.USER, allowInternal = true)
     @Post(value = "/{source}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
-    Monitor invokeMonitor(String source, @Body Map<String, Object> map) {
+    Monitor invokeMonitor(String source) {
         TestSuite testSuite = findTestSuite(source)
         httpClient.post("https://testing.trevorism.com/api/suite/${testSuite.id}", "{}")
         getMonitor(source)

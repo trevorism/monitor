@@ -87,7 +87,7 @@ class MonitorControllerTest {
         mc.httpClient = [post: { x, y -> null }] as SecureHttpClient
         mc.scheduleService = [list: { ->
             [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())] }] as ScheduleService
-        Monitor monitor = mc.invokeMonitor(SOURCE_FOR_TEST, [:])
+        Monitor monitor = mc.invokeMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"
         assert monitor.startDate
