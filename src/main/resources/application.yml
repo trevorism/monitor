@@ -1,0 +1,21 @@
+micronaut:
+  application:
+    name: monitor
+  server:
+    http-to-https-redirect: true
+  security:
+    enabled: true
+    redirect:
+      enabled: false
+  router:
+    static-resources:
+      swagger:
+        paths: classpath:META-INF/swagger
+        mapping: /swagger/**
+      swagger-ui:
+        paths: classpath:META-INF/swagger/views/swagger-ui
+        mapping: /swagger-ui/**
+netty:
+  default:
+    allocator:
+      max-order: 3

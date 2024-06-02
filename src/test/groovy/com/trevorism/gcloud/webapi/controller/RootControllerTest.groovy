@@ -1,6 +1,7 @@
 package com.trevorism.gcloud.webapi.controller
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
+
 
 /**
  * @author tbrooks
@@ -10,7 +11,7 @@ class RootControllerTest {
     @Test
     void testRootControllerEndpoints(){
         RootController rootController = new RootController()
-        assert rootController.displayHelpLink().contains("/help")
+        assert rootController.index().getBody().get().contains("/help")
     }
 
     @Test

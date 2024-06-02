@@ -1,5 +1,6 @@
 package com.trevorism.gcloud.webapi.controller
 
+import com.trevorism.data.FastDatastoreRepository
 import com.trevorism.data.PingingDatastoreRepository
 import com.trevorism.data.Repository
 import com.trevorism.data.model.filtering.ComplexFilter
@@ -8,7 +9,6 @@ import com.trevorism.data.model.filtering.SimpleFilter
 import com.trevorism.gcloud.webapi.model.Monitor
 import com.trevorism.gcloud.webapi.model.MonitorNotFoundException
 import com.trevorism.gcloud.webapi.model.TestSuite
-import com.trevorism.https.DefaultSecureHttpClient
 import com.trevorism.https.SecureHttpClient
 import com.trevorism.schedule.DefaultScheduleService
 import com.trevorism.schedule.ScheduleService
@@ -19,94 +19,88 @@ import com.trevorism.schedule.model.HttpMethod
 import com.trevorism.schedule.model.ScheduledTask
 import com.trevorism.secure.Roles
 import com.trevorism.secure.Secure
-import io.swagger.annotations.Api
-import io.swagger.annotations.ApiOperation
+import io.micronaut.http.MediaType
+import io.micronaut.http.annotation.*
+import io.swagger.v3.oas.annotations.Operation
+import io.swagger.v3.oas.annotations.tags.Tag
 
-import javax.ws.rs.Consumes
-import javax.ws.rs.DELETE
-import javax.ws.rs.GET
-import javax.ws.rs.POST
-import javax.ws.rs.Path
-import javax.ws.rs.PathParam
-import javax.ws.rs.Produces
-import javax.ws.rs.core.MediaType
-
-@Api("Monitor Operations")
-@Path("monitor")
+@Controller("/monitor")
 class MonitorController {
 
-    private SecureHttpClient httpClient = new DefaultSecureHttpClient()
-    private Repository<TestSuite> testSuiteRepository = new PingingDatastoreRepository<>(TestSuite, httpClient)
-    private ScheduleService scheduleService = new DefaultScheduleService()
+    private SecureHttpClient httpClient
+    private Repository<TestSuite> testSuiteRepository
+    private ScheduleService scheduleService
 
-    @ApiOperation(value = "Creates a new monitor **Secure")
-    @Secure(Roles.USER)
-    @POST
-    @Produces(MediaType.APPLICATION_JSON)
-    @Consumes(MediaType.APPLICATION_JSON)
-    Monitor createMonitor(Monitor monitor) {
+    MonitorController(SecureHttpClient httpClient) {
+        this.httpClient = httpClient
+        testSuiteRepository = new FastDatastoreRepository<>(TestSuite.class, httpClient)
+        scheduleService = new DefaultScheduleService(httpClient)
+    }
+
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Creates a new monitor **Secure")
+    @Secure(value = Roles.USER)
+    @Post(value = "/", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor createMonitor(@Body Monitor monitor) {
         TestSuite testSuite = findTestSuite(monitor.source)
         ScheduledTask scheduledTask = createScheduledTask(testSuite, monitor)
         scheduleService.create(scheduledTask)
-        if(monitor.frequency?.toLowerCase() != "daily" && monitor.frequency?.toLowerCase() != "weekly"){
+        if (monitor.frequency?.toLowerCase() != "daily" && monitor.frequency?.toLowerCase() != "weekly") {
             monitor.frequency = "weekly"
         }
         return monitor
     }
 
-    @ApiOperation(value = "Lists all monitors **Secure")
-    @Secure(Roles.USER)
-    @GET
-    @Produces(MediaType.APPLICATION_JSON)
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Lists all monitors **Secure")
+    @Secure(value = Roles.USER)
+    @Get(value = "/", produces = MediaType.APPLICATION_JSON)
     List<Monitor> listAllMonitor() {
-        scheduleService.list().findAll{
+        scheduleService.list().findAll {
             it.name.startsWith("monitor_")
-        }.collect{
+        }.collect {
             monitorFromScheduledTask(it)
         }
     }
 
-    @ApiOperation(value = "Gets monitors based on the service name **Secure")
-    @Secure(Roles.USER)
-    @GET
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor getMonitor(@PathParam("source") String source) {
-        monitorFromScheduledTask(scheduleService.list().find{ it.name.startsWith("monitor_${source}_")})
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Gets monitors based on the service name **Secure")
+    @Get(value = "{source}", produces = MediaType.APPLICATION_JSON)
+    @Secure(value = Roles.USER)
+    Monitor getMonitor(String source) {
+        monitorFromScheduledTask(scheduleService.list().find { it.name.startsWith("monitor_${source}_") })
     }
 
-    @ApiOperation(value = "Invoke the monitor **Secure")
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Invoke the monitor **Secure")
     @Secure(value = Roles.USER, allowInternal = true)
-    @POST
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor invokeMonitor(@PathParam("source") String source) {
+    @Post(value = "/{source}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor invokeMonitor(String source, @Body Map<String, Object> map) {
         TestSuite testSuite = findTestSuite(source)
         httpClient.post("https://testing.trevorism.com/api/suite/${testSuite.id}", "{}")
         getMonitor(source)
     }
 
-    @ApiOperation(value = "Remove registered monitor **Secure")
-    @Secure(Roles.USER)
-    @DELETE
-    @Path("{source}")
-    @Produces(MediaType.APPLICATION_JSON)
-    Monitor removeMonitor(@PathParam("source") String source) {
+    @Tag(name = "Monitor Operations")
+    @Operation(summary = "Remove registered monitor **Secure")
+    @Delete(value = "{source}", produces = MediaType.APPLICATION_JSON)
+    @Secure(value = Roles.USER)
+    Monitor removeMonitor(String source) {
         Monitor monitor = getMonitor(source)
         scheduleService.delete("monitor_${source}_${monitor.frequency}")
         return monitor
     }
 
     private static String parseSourceFromName(String s) {
-        s["monitor_".length()..s.lastIndexOf("_")-1]
+        s["monitor_".length()..s.lastIndexOf("_") - 1]
     }
 
     private static String parseFrequencyFromName(String s) {
-        s[s.lastIndexOf("_")+1..-1]
+        s[s.lastIndexOf("_") + 1..-1]
     }
 
     private static Monitor monitorFromScheduledTask(ScheduledTask it) {
-        if(!it){
+        if (!it) {
             return new Monitor(startDate: null)
         }
 
@@ -119,8 +113,8 @@ class MonitorController {
         def filter = new ComplexFilter()
         filter.addSimpleFilter(new SimpleFilter("source", FilterConstants.OPERATOR_EQUAL, source))
         filter.addSimpleFilter(new SimpleFilter("kind", FilterConstants.OPERATOR_EQUAL, "cucumber"))
-        List<TestSuite> list =  testSuiteRepository.filter(filter)
-        if(!list)
+        List<TestSuite> list = testSuiteRepository.filter(filter)
+        if (!list)
             throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${source}")
         return list[0]
     }

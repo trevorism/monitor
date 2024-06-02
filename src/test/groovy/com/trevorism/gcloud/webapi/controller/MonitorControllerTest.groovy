@@ -7,24 +7,29 @@ import com.trevorism.gcloud.webapi.model.TestSuite
 import com.trevorism.https.SecureHttpClient
 import com.trevorism.schedule.ScheduleService
 import com.trevorism.schedule.model.ScheduledTask
-import org.junit.Test
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class MonitorControllerTest  {
-
+class MonitorControllerTest {
 
     public static final String SOURCE_FOR_TEST = "testing"
+    private MonitorController mc
+
+    @BeforeEach
+    void setUp() {
+        mc = new MonitorController(new StubSecureHttpClient())
+    }
 
     @Test
-    void testParseFrequencyFromName(){
-        MonitorController mc = new MonitorController()
+    void testParseFrequencyFromName() {
         assert "weekly" == mc.parseFrequencyFromName("monitor_test_weekly")
         assert "hourly" == mc.parseFrequencyFromName("monitor_testing_hourly")
         assert "daily" == mc.parseFrequencyFromName("monitor_test-xyz_daily")
     }
 
     @Test
-    void testParseSourceFromName(){
-        MonitorController mc = new MonitorController()
+    void testParseSourceFromName() {
         assert "test" == mc.parseSourceFromName("monitor_test_weekly")
         assert SOURCE_FOR_TEST == mc.parseSourceFromName("monitor_testing_hourly")
         assert "test-xyz" == mc.parseSourceFromName("monitor_test-xyz_daily")
@@ -32,9 +37,8 @@ class MonitorControllerTest  {
 
     @Test
     void testCreateMonitor() {
-        MonitorController mc = new MonitorController()
-        mc.testSuiteRepository = ["filter": { x -> [new TestSuite()]}] as Repository
-        mc.scheduleService = [create: { x-> new ScheduledTask()} ] as ScheduleService
+        mc.testSuiteRepository = ["filter": { x -> [new TestSuite()] }] as Repository
+        mc.scheduleService = [create: { x -> new ScheduledTask() }] as ScheduleService
 
         Monitor monitor = mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST))
         assert monitor.source == SOURCE_FOR_TEST
@@ -42,18 +46,22 @@ class MonitorControllerTest  {
         assert monitor.startDate
     }
 
-    @Test(expected = MonitorNotFoundException)
+    @Test
     void testCreateMonitorInvalid() {
-        MonitorController mc = new MonitorController()
-        mc.testSuiteRepository = ["filter": { x -> []}] as Repository
-        mc.scheduleService = [create: { x-> new ScheduledTask()} ] as ScheduleService
-        mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST))
+        mc.testSuiteRepository = ["filter": { x -> [] }] as Repository
+        mc.scheduleService = [create: { x -> new ScheduledTask() }] as ScheduleService
+
+        MonitorNotFoundException exception = assertThrows(MonitorNotFoundException.class, () -> {
+            mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST))
+        })
+        assert exception.getMessage() == "Unable to locate cucumber test suite with source: ${SOURCE_FOR_TEST}"
     }
+
 
     @Test
     void testListAllMonitor() {
-        MonitorController mc = new MonitorController()
-        mc.scheduleService = [list: {-> [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hurry", startDate: new Date())]} ] as ScheduleService
+        mc.scheduleService = [list: { ->
+            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hurry", startDate: new Date())] }] as ScheduleService
         def list = mc.listAllMonitor()
         assert list
         Monitor monitor = list[0]
@@ -64,8 +72,8 @@ class MonitorControllerTest  {
 
     @Test
     void testGetMonitor() {
-        MonitorController mc = new MonitorController()
-        mc.scheduleService = [list: {-> [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hourly", startDate: new Date())]} ] as ScheduleService
+        mc.scheduleService = [list: { ->
+            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hourly", startDate: new Date())] }] as ScheduleService
         Monitor monitor = mc.getMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "hourly"
@@ -74,11 +82,11 @@ class MonitorControllerTest  {
 
     @Test
     void testInvokeMonitor() {
-        MonitorController mc = new MonitorController()
-        mc.testSuiteRepository = ["filter": { x -> [new TestSuite()]}] as Repository
-        mc.httpClient = [post: {x,y -> null}] as SecureHttpClient
-        mc.scheduleService = [list: {-> [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())]} ] as ScheduleService
-        Monitor monitor = mc.invokeMonitor(SOURCE_FOR_TEST)
+        mc.testSuiteRepository = ["filter": { x -> [new TestSuite()] }] as Repository
+        mc.httpClient = [post: { x, y -> null }] as SecureHttpClient
+        mc.scheduleService = [list: { ->
+            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())] }] as ScheduleService
+        Monitor monitor = mc.invokeMonitor(SOURCE_FOR_TEST, [:])
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"
         assert monitor.startDate
@@ -86,9 +94,9 @@ class MonitorControllerTest  {
 
     @Test
     void testRemoveMonitor() {
-        MonitorController mc = new MonitorController()
-        mc.scheduleService = [list: {-> [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())]},
-        delete: {x -> true}] as ScheduleService
+        mc.scheduleService = [list  : { ->
+            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())] },
+                              delete: { x -> true }] as ScheduleService
         Monitor monitor = mc.removeMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"
