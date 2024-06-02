@@ -1,4 +1,4 @@
-# 0.2.0
+# 0.3.0
 
 Update to micronaut from jersey. Add latest build dependencies.
 

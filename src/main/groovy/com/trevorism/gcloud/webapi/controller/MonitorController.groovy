@@ -53,8 +53,8 @@ class MonitorController {
 
     @Tag(name = "Monitor Operations")
     @Operation(summary = "Lists all monitors **Secure")
-    @Secure(value = Roles.USER)
-    @Get(value = "/", produces = MediaType.APPLICATION_JSON)
+    @Secure(Roles.USER)
+    @Get(value = "/", consumes = MediaType.APPLICATION_JSON)
     List<Monitor> listAllMonitor() {
         scheduleService.list().findAll {
             it.name.startsWith("monitor_")

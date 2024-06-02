@@ -36,3 +36,4 @@ When(/I ping the application deployed to {string}/) { String string ->
 Then(/pong is returned, to indicate the service is alive/) {  ->
     assert pingContent == "pong"
 }
+
