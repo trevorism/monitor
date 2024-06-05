@@ -23,23 +23,10 @@ class MonitorControllerTest {
     }
 
     @Test
-    void testParseFrequencyFromName() {
-        assert "weekly" == mc.parseFrequencyFromName("monitor_test_weekly")
-        assert "hourly" == mc.parseFrequencyFromName("monitor_testing_hourly")
-        assert "daily" == mc.parseFrequencyFromName("monitor_test-xyz_daily")
-    }
-
-    @Test
-    void testParseSourceFromName() {
-        assert "test" == mc.parseSourceFromName("monitor_test_weekly")
-        assert SOURCE_FOR_TEST == mc.parseSourceFromName("monitor_testing_hourly")
-        assert "test-xyz" == mc.parseSourceFromName("monitor_test-xyz_daily")
-    }
-
-    @Test
     void testCreateMonitor() {
         mc.testSuiteRepository = ["filter": { x -> [new TestSuite()] }] as Repository
         mc.scheduleService = [create: { x -> new ScheduledTask() }] as ScheduleService
+        mc.monitorRepository = ["create": { x -> x }] as Repository
 
         Monitor monitor = mc.createMonitor(new Monitor(source: SOURCE_FOR_TEST))
         assert monitor.source == SOURCE_FOR_TEST
@@ -63,7 +50,8 @@ class MonitorControllerTest {
     void testListAllMonitor() {
         mc.scheduleService = [list: { ->
             [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hurry", startDate: new Date())] }] as ScheduleService
-        def list = mc.listAllMonitor()
+        mc.monitorRepository = ["list": { -> [new Monitor(source: SOURCE_FOR_TEST, frequency: "hurry")] }] as Repository
+        def list = mc.listAllMonitors()
         assert list
         Monitor monitor = list[0]
         assert monitor.source == SOURCE_FOR_TEST
@@ -73,8 +61,7 @@ class MonitorControllerTest {
 
     @Test
     void testGetMonitor() {
-        mc.scheduleService = [list: { ->
-            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_hourly", startDate: new Date())] }] as ScheduleService
+        mc.monitorRepository = ["get": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "hourly", startDate: new Date()) }] as Repository
         Monitor monitor = mc.getMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "hourly"
@@ -85,8 +72,7 @@ class MonitorControllerTest {
     void testInvokeMonitor() {
         mc.testSuiteRepository = ["filter": { x -> [new TestSuite()] }] as Repository
         mc.httpClient = [post: { x, y -> null }] as SecureHttpClient
-        mc.scheduleService = [list: { ->
-            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())] }] as ScheduleService
+        mc.monitorRepository = ["get": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "daily", startDate: new Date()) }] as Repository
         Monitor monitor = mc.invokeMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"
@@ -95,9 +81,8 @@ class MonitorControllerTest {
 
     @Test
     void testRemoveMonitor() {
-        mc.scheduleService = [list  : { ->
-            [new ScheduledTask(name: "monitor_${SOURCE_FOR_TEST}_daily", startDate: new Date())] },
-                              delete: { x -> true }] as ScheduleService
+        mc.scheduleService = [delete: { x -> new ScheduledTask() }] as ScheduleService
+        mc.monitorRepository = ["get": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "daily", startDate: new Date()) }] as Repository
         Monitor monitor = mc.removeMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"

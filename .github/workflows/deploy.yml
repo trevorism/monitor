@@ -20,7 +20,7 @@ jobs:
       JDK_VERSION: 17
       gcp_project: 'trevorism-testing'
       gcp_project_id: '729203316942'
-      version: '0-3-0'
+      version: '0-4-0'
     secrets:
       CLIENT_ID: ${{ secrets.CLIENT_ID }}
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}

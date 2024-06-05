@@ -1,9 +1,8 @@
 package com.trevorism.gcloud.webapi.controller
 
 import com.trevorism.data.FastDatastoreRepository
-import com.trevorism.data.PingingDatastoreRepository
 import com.trevorism.data.Repository
-import com.trevorism.data.model.filtering.ComplexFilter
+import com.trevorism.data.model.filtering.FilterBuilder
 import com.trevorism.data.model.filtering.FilterConstants
 import com.trevorism.data.model.filtering.SimpleFilter
 import com.trevorism.gcloud.webapi.model.Monitor
@@ -29,11 +28,13 @@ class MonitorController {
 
     private SecureHttpClient httpClient
     private Repository<TestSuite> testSuiteRepository
+    private Repository<Monitor> monitorRepository
     private ScheduleService scheduleService
 
     MonitorController(SecureHttpClient httpClient) {
         this.httpClient = httpClient
         testSuiteRepository = new FastDatastoreRepository<>(TestSuite.class, httpClient)
+        monitorRepository = new FastDatastoreRepository<>(Monitor.class, httpClient)
         scheduleService = new DefaultScheduleService(httpClient)
     }
 
@@ -42,92 +43,74 @@ class MonitorController {
     @Secure(value = Roles.USER)
     @Post(value = "/", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
     Monitor createMonitor(@Body Monitor monitor) {
-        TestSuite testSuite = findTestSuite(monitor.source)
-        ScheduledTask scheduledTask = createScheduledTask(testSuite, monitor)
-        scheduleService.create(scheduledTask)
-        if (monitor.frequency?.toLowerCase() != "daily" && monitor.frequency?.toLowerCase() != "weekly") {
-            monitor.frequency = "weekly"
-        }
-        return monitor
+        TestSuite testSuite = findTestSuite(monitor)
+        ScheduledTask scheduledTask = scheduleService.create(createScheduledTask(testSuite, monitor))
+        monitor.scheduleId = scheduledTask.id
+        monitor.testSuiteId = testSuite.id
+        return monitorRepository.create(monitor)
     }
 
     @Tag(name = "Monitor Operations")
     @Operation(summary = "Lists all monitors **Secure")
     @Secure(Roles.USER)
     @Get(value = "/", consumes = MediaType.APPLICATION_JSON)
-    List<Monitor> listAllMonitor() {
-        scheduleService.list().findAll {
-            it.name.startsWith("monitor_")
-        }.collect {
-            monitorFromScheduledTask(it)
-        }
+    List<Monitor> listAllMonitors() {
+        monitorRepository.list()
     }
 
     @Tag(name = "Monitor Operations")
-    @Operation(summary = "Gets monitors based on the service name **Secure")
-    @Get(value = "{source}", produces = MediaType.APPLICATION_JSON)
-    @Secure(value = Roles.USER)
-    Monitor getMonitor(String source) {
-        monitorFromScheduledTask(scheduleService.list().find { it.name.startsWith("monitor_${source}_") })
+    @Operation(summary = "Get monitor by id **Secure")
+    @Secure(value = Roles.USER, allowInternal = true)
+    @Get(value = "/{id}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor getMonitor(String id) {
+        Monitor monitor = monitorRepository.get(id)
+        return monitor
     }
 
     @Tag(name = "Monitor Operations")
     @Operation(summary = "Invoke the monitor **Secure")
     @Secure(value = Roles.USER, allowInternal = true)
-    @Post(value = "/{source}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
-    Monitor invokeMonitor(String source) {
-        TestSuite testSuite = findTestSuite(source)
+    @Post(value = "/{id}", produces = MediaType.APPLICATION_JSON, consumes = MediaType.APPLICATION_JSON)
+    Monitor invokeMonitor(String id) {
+        Monitor monitor = monitorRepository.get(id)
+        TestSuite testSuite = findTestSuite(monitor)
         httpClient.post("https://testing.trevorism.com/api/suite/${testSuite.id}", "{}")
-        getMonitor(source)
+        return monitor
     }
 
     @Tag(name = "Monitor Operations")
     @Operation(summary = "Remove registered monitor **Secure")
-    @Delete(value = "{source}", produces = MediaType.APPLICATION_JSON)
+    @Delete(value = "{id}", produces = MediaType.APPLICATION_JSON)
     @Secure(value = Roles.USER)
-    Monitor removeMonitor(String source) {
-        Monitor monitor = getMonitor(source)
-        scheduleService.delete("monitor_${source}_${monitor.frequency}")
+    Monitor removeMonitor(String id) {
+        Monitor monitor = monitorRepository.get(id)
+        scheduleService.delete(monitor.scheduleId)
         return monitor
     }
 
-    private static String parseSourceFromName(String s) {
-        s["monitor_".length()..s.lastIndexOf("_") - 1]
-    }
+    private TestSuite findTestSuite(Monitor monitor) {
+        if (monitor.testSuiteId)
+            return testSuiteRepository.get(monitor.testSuiteId)
 
-    private static String parseFrequencyFromName(String s) {
-        s[s.lastIndexOf("_") + 1..-1]
-    }
-
-    private static Monitor monitorFromScheduledTask(ScheduledTask it) {
-        if (!it) {
-            return new Monitor(startDate: null)
-        }
-
-        String source = parseSourceFromName(it.name)
-        String frequency = parseFrequencyFromName(it.name)
-        new Monitor(source: source, startDate: it.startDate, frequency: frequency)
-    }
-
-    private TestSuite findTestSuite(String source) {
-        def filter = new ComplexFilter()
-        filter.addSimpleFilter(new SimpleFilter("source", FilterConstants.OPERATOR_EQUAL, source))
-        filter.addSimpleFilter(new SimpleFilter("kind", FilterConstants.OPERATOR_EQUAL, "cucumber"))
+        def filter = new FilterBuilder()
+                .addFilter(new SimpleFilter("source", FilterConstants.OPERATOR_EQUAL, monitor.source))
+                .addFilter(new SimpleFilter("kind", FilterConstants.OPERATOR_EQUAL, monitor.kind))
+                .build()
         List<TestSuite> list = testSuiteRepository.filter(filter)
         if (!list)
-            throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${source}")
+            throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${monitor.source}")
         return list[0]
     }
 
-    private ScheduledTask createScheduledTask(TestSuite testSuite, Monitor monitor) {
+    private static ScheduledTask createScheduledTask(TestSuite testSuite, Monitor monitor) {
         ScheduledTaskFactory factory = new DefaultScheduledTaskFactory()
         EndpointSpec endpointSpec = new EndpointSpec("https://testing.trevorism.com/api/suite/${testSuite.id}", HttpMethod.POST, "{}")
         if (monitor.frequency == "daily") {
-            return factory.createDailyTask("monitor_${monitor.source}_daily", monitor.startDate, endpointSpec)
+            return factory.createDailyTask("monitor_${monitor.source}_daily_${monitor.kind}", monitor.startDate, endpointSpec)
         } else if (monitor.frequency == "hourly") {
-            return factory.createHourlyTask("monitor_${monitor.source}_hourly", monitor.startDate, endpointSpec)
+            return factory.createHourlyTask("monitor_${monitor.source}_hourly_${monitor.kind}", monitor.startDate, endpointSpec)
         }
-        return factory.createWeeklyTask("monitor_${monitor.source}_weekly", monitor.startDate, endpointSpec)
+        return factory.createWeeklyTask("monitor_${monitor.source}_weekly_${monitor.kind}", monitor.startDate, endpointSpec)
 
     }
 }

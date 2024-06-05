@@ -1,3 +1,7 @@
+# 0.4.0
+
+Add ability to monitor with cypress in addition to cucumber.
+
 # 0.3.0
 
 Add latest build dependencies.
