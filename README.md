@@ -6,8 +6,6 @@
 
 This app manages monitors on trevorism, scheduled runs of acceptance tests.
 
-Current version 0.4.0
-
 Deployed to https://monitor.testing.trevorism.com
 
 # How to build
