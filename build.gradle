@@ -50,7 +50,7 @@ dependencies {
     runtimeOnly("org.yaml:snakeyaml")
 
     implementation("jakarta.annotation:jakarta.annotation-api")
-    implementation 'io.projectreactor:reactor-core:3.6.8'
+    implementation 'io.projectreactor:reactor-core:3.6.9'
 
     implementation("io.swagger.core.v3:swagger-annotations")
     compileOnly("io.micronaut.openapi:micronaut-openapi"){
@@ -104,7 +104,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             limit {
-                minimum = 0.1
+                minimum = 0.7
             }
         }
     }
