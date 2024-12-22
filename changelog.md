@@ -1,3 +1,7 @@
+# 0.6.0
+
+Update dependencies. Fix bug with monitor deletion
+
 # 0.5.0
 
 Update dependencies.
