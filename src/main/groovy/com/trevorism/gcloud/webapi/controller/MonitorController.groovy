@@ -99,7 +99,7 @@ class MonitorController {
         List<TestSuite> list = testSuiteRepository.filter(filter)
         if (!list)
             throw new MonitorNotFoundException("Unable to locate cucumber test suite with source: ${monitor.source}")
-        return list[0]
+        return list.first()
     }
 
     private static ScheduledTask createScheduledTask(TestSuite testSuite, Monitor monitor) {
