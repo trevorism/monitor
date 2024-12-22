@@ -82,7 +82,8 @@ class MonitorControllerTest {
     @Test
     void testRemoveMonitor() {
         mc.scheduleService = [delete: { x -> new ScheduledTask() }] as ScheduleService
-        mc.monitorRepository = ["get": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "daily", startDate: new Date()) }] as Repository
+        mc.monitorRepository = ["get": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "daily", startDate: new Date()) },
+        "delete": { x -> new Monitor(source: SOURCE_FOR_TEST, frequency: "daily", startDate: new Date())}] as Repository
         Monitor monitor = mc.removeMonitor(SOURCE_FOR_TEST)
         assert monitor.source == SOURCE_FOR_TEST
         assert monitor.frequency == "daily"
