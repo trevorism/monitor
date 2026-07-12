@@ -1,3 +1,7 @@
+# 0.7.0
+
+Upgrade to micronaut 5, java 25
+
 # 0.6.0
 
 Update dependencies. Fix bug with monitor deletion
