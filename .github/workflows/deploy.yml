@@ -11,13 +11,13 @@ jobs:
   call-build:
     uses: trevorism/actions-workflows/.github/workflows/build.yml@master
     with:
-      JDK_VERSION: 17
+      JDK_VERSION: 25
 
   call-deploy:
     uses: trevorism/actions-workflows/.github/workflows/deploy.yml@master
     needs: [call-build]
     with:
-      JDK_VERSION: 17
+      JDK_VERSION: 25
       gcp_project: 'trevorism-testing'
       gcp_project_id: '729203316942'
       version: '0-7-0'
@@ -31,5 +31,5 @@ jobs:
     uses: trevorism/actions-workflows/.github/workflows/accept.yml@master
     needs: call-deploy
     with:
-      JDK_VERSION: 17
+      JDK_VERSION: 25
 
